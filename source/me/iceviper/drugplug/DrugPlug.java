@@ -6,6 +6,8 @@ import java.util.List;
 
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -20,17 +22,16 @@ public class DrugPlug extends JavaPlugin{
 	
 	@Override
 	public void onEnable() {
-		getLogger().info("[DrugPlug] Has been enabled, have fun drugging!");
+		getLogger().info("Has been enabled, have fun drugging!");
 		getServer().getPluginManager().registerEvents(new DamageListener(this),this);
 		this.saveDefaultConfig();
 		reloadDrugConfig();
 		reloadJails();
-		this.getCommand("drug").setExecutor(new DrugCommandExecutor(this));
 	}
 	
 	@Override
 	public void onDisable() {
-		getLogger().info("[DrugPlug] Has been disabled :(");
+		getLogger().info("Has been disabled :(");
 		releaseEveryone();
 	}
 	
@@ -132,5 +133,68 @@ public class DrugPlug extends JavaPlugin{
 				unJail(player.getName());
 			}
 		}, time);
+	}
+	
+	public boolean onCommand(CommandSender cmdSender, Command cmd, String label, String[] args) {
+		if (args.length == 0) {
+			help(cmdSender);
+			return true;
+		} else {
+			if (args[0] == "add") {
+				if (!cmdSender.hasPermission("drug.add")) {
+					cmdSender.sendMessage(ChatColor.RED + "You do not have permission to add drugs to the config, this is Admin Only!");
+					return true;
+				}
+				if (args.length != 2) {
+					cmdSender.sendMessage(ChatColor.RED + "'/drug add <id[:data]>' only accepts 2 arguments! You put in " + args.length);
+				} else {
+					getConfig().set("drugs", getConfig().getStringList("drugs").add(args[1]));
+					saveConfig();
+					reloadDrugConfig();
+				}
+				return true;
+			} else if (args[0] == "reload") {
+				if (!cmdSender.hasPermission("drug.reload")) {
+					cmdSender.sendMessage(ChatColor.RED + "You do not have permission to reload the config, this is Admin Only!");
+					return true;
+				}
+				reloadDrugConfig();
+				return true;
+			} else if (args[0] == "newjail") {
+				if (!cmdSender.hasPermission("drug.newjail") || !(cmdSender instanceof Player)) {
+					cmdSender.sendMessage(ChatColor.RED + "You do not have permission to create new jails, this is Admin Only!");
+					return true;
+				}
+				int jailnum = getConfig().getInt("jails.amount") + 1;
+				getConfig().set("jails.amount", jailnum);
+				getConfig().set("jails." + jailnum + ".x", ((Player) cmdSender).getLocation().getBlockX());
+				getConfig().set("jails." + jailnum + ".y", ((Player) cmdSender).getLocation().getBlockY());
+				getConfig().set("jails." + jailnum + ".z", ((Player) cmdSender).getLocation().getBlockZ());
+				saveConfig();
+				return true;
+			} else if (args[0] == "jail") {
+				if (!cmdSender.hasPermission("drug.jail")) {
+					cmdSender.sendMessage(ChatColor.RED + "You do not have permission to jail people, this is Admin Only!");
+					return true;
+				}
+				if (args.length != 3) {
+					cmdSender.sendMessage(ChatColor.RED + "'/drug jail <player> <time in seconds>' only accepts 3 arguments! You put in " + args.length);
+					return true;
+				}
+				jail(getServer().getPlayer(args[1]), Integer.parseInt(args[2])*1000);
+				return true;
+			}
+			else {
+				cmdSender.sendMessage(ChatColor.RED + "Unknown argument: " + args[0] + ". Type '/drug help' for all available commands.");
+				return true;
+			}
+		}
+	}
+	
+	public void help(CommandSender cmdSender) {
+		cmdSender.sendMessage(ChatColor.DARK_GREEN + "-=- Drug Plug help -=-");
+		cmdSender.sendMessage(ChatColor.AQUA + "/drug add <id[:data]> " + ChatColor.GREEN + "to add an item as a drug " + ChatColor.RED + "(Admin only)");
+		cmdSender.sendMessage(ChatColor.AQUA + "/drug reload " + ChatColor.GREEN + "to reload the config " + ChatColor.RED + "(Admin only)");
+		cmdSender.sendMessage(ChatColor.AQUA + "/drug newjail " + ChatColor.GREEN + "to set a jail point " + ChatColor.RED + "(Admin only)");
 	}
 }
