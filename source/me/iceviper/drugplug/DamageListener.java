@@ -2,6 +2,7 @@ package me.iceviper.drugplug;
 
 import java.util.ArrayList;
 
+import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -44,24 +45,26 @@ public class DamageListener implements Listener {
 						scanning = smuggler.getInventory().getItem(i);
 						if(containsSimilar(plugin.drugs, scanning)) {
 							smuggler.getInventory().remove(scanning);
-							police.getWorld().dropItem(police.getLocation(), police.getInventory().addItem(scanning).get(0));
+							ItemStack leftover = police.getInventory().addItem(scanning).get(0);
+							if(leftover != null) police.getWorld().dropItem(police.getLocation(),leftover);
 							found = true;
 						}
 					}
 					if (found) {
-						plugin.jail(smuggler,1000*60*5);
+						plugin.jail(smuggler,20*60*5);
+						smuggler.sendMessage(ChatColor.RED + "You have been caught with drugs by " + police.getDisplayName());
+						police.sendMessage(ChatColor.GREEN + "You found drugs on this player and arrested him, his items are now yours!");
 					} else {
-						int warnings = 0;
+						int warnings = 1;
 						if (plugin.policeWarning.containsKey(police.getName())) {
-							warnings = plugin.policeWarning.get(police.getName());
+							warnings = plugin.policeWarning.get(police.getName()) + 1;
 							plugin.policeWarning.remove(police.getName());
-						} else {
-							warnings = 1;
 						}
-						if (warnings > plugin.getConfig().getInt("maxPoliceFails")) {
-							plugin.jail(police, 1000*60*5);
+						if (warnings > plugin.getConfig().getInt("maxPoliceFails",5)) {
+							plugin.jail(police, 20*60*5);
+							warnings = 0;
 						}
-						warnings = 0;
+						police.sendMessage(ChatColor.RED + "You tried to arrest someone without drugs! Warning " + warnings + "/" + plugin.getConfig().getInt("maxPoliceFails",5));
 						plugin.policeWarning.put(police.getName(), warnings);
 					}
 				}
