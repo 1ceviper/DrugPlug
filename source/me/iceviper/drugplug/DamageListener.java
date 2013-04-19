@@ -7,6 +7,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.inventory.ItemStack;
 
 public class DamageListener implements Listener {
@@ -23,7 +24,7 @@ public class DamageListener implements Listener {
 	}	
 	
 	@EventHandler
-	public void entityDamaged(EntityDamageByEntityEvent e) {
+	public void onEntityDamageByEntity(EntityDamageByEntityEvent e) {
 		Player police = null;
 		Player smuggler = null;
 		if (e.getDamager() instanceof Player) {
@@ -33,7 +34,7 @@ public class DamageListener implements Listener {
 			smuggler = (Player)e.getEntity();
 		}
 		if (police != null && smuggler != null) {
-			if (police.hasPermission("drugplug.police") && !smuggler.hasPermission("drugplug.noremove") && !smuggler.hasPermission("drugplug.police")) {
+			if (police.hasPermission("drug.police") && !smuggler.hasPermission("drug.noremove") && !smuggler.hasPermission("drugplug.police")) {
 				//Permission are good
 				if (police.getItemInHand().isSimilar(new ItemStack(Material.STICK,1))) {
 					//Police is holding a stick
@@ -48,12 +49,30 @@ public class DamageListener implements Listener {
 						}
 					}
 					if (found) {
-						jail(smuggler,1000*60*5);
+						plugin.jail(smuggler,1000*60*5);
 					} else {
-						//Police punishment
+						int warnings = 0;
+						if (plugin.policeWarning.containsKey(police.getName())) {
+							warnings = plugin.policeWarning.get(police.getName());
+							plugin.policeWarning.remove(police.getName());
+						} else {
+							warnings = 1;
+						}
+						if (warnings > plugin.getConfig().getInt("maxPoliceFails")) {
+							plugin.jail(police, 1000*60*5);
+						}
+						warnings = 0;
+						plugin.policeWarning.put(police.getName(), warnings);
 					}
 				}
 			}
+		}
+	}
+	
+	@EventHandler
+	public void onPlayerTeleport(PlayerTeleportEvent e) {
+		if (plugin.jailed.containsValue(e.getPlayer().getName())) {
+			e.setCancelled(true);
 		}
 	}
 	
@@ -62,9 +81,5 @@ public class DamageListener implements Listener {
 			if (i.isSimilar(scanning)) return true;
 		}
 		return false;
-	}
-	
-	public void jail (Player player, int time) {
-		plugin.jailed.put(key, value);
 	}
 }
