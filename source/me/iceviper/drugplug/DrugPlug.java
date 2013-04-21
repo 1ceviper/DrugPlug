@@ -112,7 +112,14 @@ public class DrugPlug extends JavaPlugin{
 			jailed.put(j, "");
 			jails.remove(j);
 			jails.put(j, (long) 0);
-			getServer().getPlayer(releasing).performCommand("spawn");
+			if (getConfig().getInt("drug.free.y",-1) == -1) {
+				getServer().getPlayer(releasing).performCommand("spawn");
+				getConfig().set("drug.free.x", 0);
+				getConfig().set("drug.free.y", -1);
+				getConfig().set("drug.free.z", 0);
+			} else {
+				getServer().getPlayer(releasing).teleport(new Location(getServer().getPlayer(releasing).getWorld(),getConfig().getInt("drug.free.x"),getConfig().getInt("drug.free.y"),getConfig().getInt("drug.free.z")));
+			}
 			getServer().getPlayer(releasing).sendMessage(ChatColor.GREEN + "You have been released!");
 		}
 	}
@@ -171,6 +178,39 @@ public class DrugPlug extends JavaPlugin{
 						reloadDrugConfig();
 					}
 					return true;
+				} else if (args[0].equalsIgnoreCase("addeffect")) {
+					if (!cmdSender.hasPermission("drug.add")) {
+						cmdSender.sendMessage(ChatColor.RED + "You do not have permission to add drug effects to the config, this is Admin Only!");
+						return true;
+					}
+					if (args.length != 5) {
+						cmdSender.sendMessage(ChatColor.RED + "'/drug addeffect <id[:data]> <potionEffectId> <strength> <time (seconds)>' only accepts 5 arguments! You put in " + args.length);
+					} else {
+						String drug = args[1];
+						int effect = Integer.parseInt(args[2]);
+						int strength = Integer.parseInt(args[3]);
+						int time = Integer.parseInt(args[4])*20;
+						if (drug.contains(":")) {
+							ItemStack drugItem = new ItemStack(Integer.parseInt(drug.split(":")[0]),1);
+							drugItem.setDurability((short) Integer.parseInt(drug.split(":")[1]));
+							if (!DamageListener.containsSimilar(drugs, drugItem)) {
+								cmdSender.sendMessage(ChatColor.RED + "Cannot add effects to non-existent drugs. Unknown drug: " + drug);
+								return true;
+							}
+						} else {
+							if (!DamageListener.containsSimilar(drugs, new ItemStack(Integer.parseInt(drug),1))) {
+								cmdSender.sendMessage(ChatColor.RED + "Cannot add effects to non-existent drugs. Unknown drug: " + drug);
+								return true;
+							}
+						}
+						String addStr = "" + effect + ":" + time + ":" + strength;
+						if (getConfig().getString("drug." + drug + ".effect","") != "") {
+							addStr = "," + addStr;
+						}
+						getConfig().set("drug." + drug + ".effect", getConfig().getString("drug." + drug + ".effect","") + addStr);
+						saveConfig();
+					}
+					return true;
 				} else if (args[0].equalsIgnoreCase("reload")) {
 					if (!cmdSender.hasPermission("drug.reload")) {
 						cmdSender.sendMessage(ChatColor.RED + "You do not have permission to reload the config, this is Admin Only!");
@@ -202,6 +242,21 @@ public class DrugPlug extends JavaPlugin{
 					}
 					jail(getServer().getPlayer(args[1]), Integer.parseInt(args[2])*20);
 					return true;
+				} else if (args[0].equalsIgnoreCase("unjail")) {
+					if (!cmdSender.hasPermission("drug.jail")) {
+						cmdSender.sendMessage(ChatColor.RED + "You do not have permission to unjail people, this is Admin Only!");
+						return true;
+					}
+					if (args.length != 2) {
+						cmdSender.sendMessage(ChatColor.RED + "'/drug unjail <player>' only accepts 2 arguments! You put in " + args.length);
+						return true;
+					}
+					if (!jailed.containsValue(getServer().getPlayer(args[1]).getName())) {
+						cmdSender.sendMessage(ChatColor.RED + getServer().getPlayer(args[1]).getName() + " is not in jail.");
+						return true;
+					}
+					unJail(getServer().getPlayer(args[1]).getName());
+					return true;
 				} else if (args[0].equalsIgnoreCase("help")) {
 					help(cmdSender);
 					return true;
@@ -217,9 +272,10 @@ public class DrugPlug extends JavaPlugin{
 	public void help(CommandSender cmdSender) {
 		cmdSender.sendMessage(ChatColor.DARK_GREEN + "-=- Drug Plug help -=-");
 		cmdSender.sendMessage(ChatColor.AQUA + "/drug add <id[:data]> " + ChatColor.GREEN + "to add an item as a drug " + ChatColor.RED + "(Admin only)");
+		cmdSender.sendMessage(ChatColor.AQUA + "/drug addeffect <id[:data]> <effectId> <time (seconds)>" + ChatColor.GREEN + "to add an effect to a drug " + ChatColor.RED + "(Admin only)");
 		cmdSender.sendMessage(ChatColor.AQUA + "/drug reload " + ChatColor.GREEN + "to reload the config " + ChatColor.RED + "(Admin only)");
 		cmdSender.sendMessage(ChatColor.AQUA + "/drug newjail " + ChatColor.GREEN + "to set a jail point " + ChatColor.RED + "(Admin only)");
 		cmdSender.sendMessage(ChatColor.AQUA + "/drug jail <player> <time in seconds>" + ChatColor.GREEN + "to jail someone " + ChatColor.RED + "(Admin only)");
-
+		cmdSender.sendMessage(ChatColor.AQUA + "/drug unjail <player>" + ChatColor.GREEN + "to unjail someone " + ChatColor.RED + "(Admin only)");
 	}
 }
