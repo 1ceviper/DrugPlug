@@ -9,6 +9,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public class DrugPlug extends JavaPlugin{
@@ -17,6 +18,8 @@ public class DrugPlug extends JavaPlugin{
 	public HashMap<Integer,String> jailed = new HashMap<Integer,String>();
 	public HashMap<Integer, Long> jails = new HashMap<Integer, Long>();
 	public HashMap<String, Integer> policeWarning = new HashMap<String, Integer>();
+	public HashMap<String,Long> lastArrest = new HashMap<String,Long>();
+	public HashMap<String,Long> lastScan = new HashMap<String,Long>();
 	public int jailAmount = 0;
 	
 	@Override
@@ -259,6 +262,22 @@ public class DrugPlug extends JavaPlugin{
 					return true;
 				} else if (args[0].equalsIgnoreCase("help")) {
 					help(cmdSender);
+					return true;
+				} else if (args[0].equalsIgnoreCase("makewarrant")) {
+					if (!cmdSender.isOp()) {
+						cmdSender.sendMessage(ChatColor.RED + "You need to be an op to perform this command");
+						return true;
+					}
+					if (cmdSender instanceof Player) {
+						ItemStack warrant = new ItemStack(Material.PAPER,1);
+						ItemMeta meta = warrant.getItemMeta();
+						meta.setDisplayName("Warrant");
+						ArrayList<String> durability = new ArrayList<String>();
+						durability.add("Uses: 10/10");
+						meta.setLore(durability);
+						warrant.setItemMeta(meta);
+						((Player) cmdSender).getInventory().addItem(warrant);
+					}
 					return true;
 				} else {
 					cmdSender.sendMessage(ChatColor.RED + "Unknown argument: " + args[0] + ". Type '/drug help' for all available commands.");
